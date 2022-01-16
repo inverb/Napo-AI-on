@@ -1,0 +1,6 @@
+[submodule "benchmarks/cg-referee-ghost-in-the-cell"]
+	path = benchmarks/cg-referee-ghost-in-the-cell
+	url = git@github.com:dreignier/cg-referee-ghost-in-the-cell.git
+[submodule "benchmarks/cg-brutaltester"]
+	path = benchmarks/cg-brutaltester
+	url = git@github.com:dreignier/cg-brutaltester.git
