@@ -18,19 +18,13 @@ vector<par> graph[109];
 int n, m;
 
 par my_fact[109], op_fact[109], my_fact_simul[109], op_fact_simul[109];
-int fact_possession[109], bombs = 2, stopped[109], bombed[109], stopped_simul[109], leave[109], moves_made[109], spares[109], d_cyborg;
-vector<event> events;
+int fact_possession[109], bombs = 2, stopped[109], bombed[109], stopped_simul[109], leave[109], moves_made[109], spares[109];
+vector<event> events, events_now;
 vector<quad> attacks;
 set<int> known_bomb_id;
 
 int place_bombs(int action_cnt, int timer)
 {
-    /*
-    *       HEURISTIC : Place bombs only in factories that produce at least 2 cyborgs.
-    *                   It's better to place bombs in factories with many cyborgs,
-    *                   but after turn 10 that conditionis dropped, as fate of the game is often
-    *                   decided early and we shouldn't wait too long with bombing.
-    */
     if(bombs == 0) return 0;
     par p;
     vector<three> v;
@@ -43,6 +37,7 @@ int place_bombs(int action_cnt, int timer)
             for(int j=0; j<graph[i].size(); j++)
             {
                 p = graph[i][j];
+                // HEURISTIC : only bomb factories with many cyborgs, so bomb destroys at least 10
                 if(timer <= 10 && op_fact[i].fi + op_fact[i].se * p.se < 8) continue;
                 if(fact_possession[p.fi] == 1 && p.se < dist)
                 {
@@ -65,18 +60,13 @@ int place_bombs(int action_cnt, int timer)
 
 void simul()
 {
-    /*
-    *       HEURISTIC : Simulates all the troops/bombs currently in the air to calculate the spares array
-    *                   that says how many troops are not required in every given factory and can be sent to help elsewhere.
-    *                   Needed in defend() function.
-    */
     int curr_time = 0, target_id, lost, troops_sent, actions = 0;
     event e;
     par p;
 
     for(int i=0; i<events.size(); i++)
     {
-        for(int i=0; i<n; i++) if(fact_possession[i] == 1) spares[i] = min(spares[i], my_fact_simul[i].fi);     // <---------- This is the reason for this function.
+        for(int i=0; i<n; i++) if(fact_possession[i] == 1) spares[i] = min(spares[i], my_fact_simul[i].fi);
         e = events[i];
         if(e.fi > curr_time)
         {
@@ -95,12 +85,12 @@ void simul()
         target_id = e.se.se.se;
         if(e.se.fi.se == -1)
         {
-            // This event is a bomb sent by us
+            // Event is a bomb sent by us
             stopped_simul[target_id] = 5;
         }
         else
         {
-            // This event is a troop
+            // Event is a troop
             if(e.se.fi.fi == 1)
             {
                 // My troop
@@ -113,6 +103,7 @@ void simul()
                         my_fact_simul[target_id].fi = -op_fact_simul[target_id].fi;
                         my_fact_simul[target_id].se = op_fact_simul[target_id].se;
                         op_fact_simul[target_id].fi = 0;
+                        //fact_possession[target_id] = 1;
                     }
                 }
             }
@@ -131,6 +122,7 @@ void simul()
                             op_fact_simul[target_id].fi = -my_fact_simul[target_id].fi;
                             op_fact_simul[target_id].se = my_fact_simul[target_id].se;
                             my_fact_simul[target_id].fi = 0;
+                            //fact_possession[target_id] = -1;
                         }
                     }
                 }
@@ -138,7 +130,11 @@ void simul()
                 {
                     // ... attacks neutral factory
                     if(op_fact_simul[target_id].fi >= e.se.fi.se) op_fact_simul[target_id].fi -= e.se.fi.se;
-                    else op_fact_simul[target_id].fi = e.se.fi.se - op_fact_simul[target_id].fi;
+                    else
+                    {
+                        op_fact_simul[target_id].fi = e.se.fi.se - op_fact_simul[target_id].fi;
+                        //fact_possession[target_id] = -1;
+                    }
                 }
             }
         }
@@ -159,7 +155,7 @@ int defend(int action_cnt)
         spares[i] = 1e9;
     }
 
-    simul();                                                                            // Calculates spares[] array.
+    simul();
 
     for(int i=0; i<n; i++)
     {
@@ -206,6 +202,7 @@ int defend(int action_cnt)
                         my_fact_simul[target_id].fi = -op_fact_simul[target_id].fi;
                         my_fact_simul[target_id].se = op_fact_simul[target_id].se;
                         op_fact_simul[target_id].fi = 0;
+                        //fact_possession[target_id] = 1;
                     }
                 }
             }
@@ -219,7 +216,7 @@ int defend(int action_cnt)
                     if(my_fact_simul[target_id].fi < 0)
                     {
                         lost = 1;
-                        // HEURISTIC : not saving factories that currently don't produce cyborgs.
+                        // HEURISTIC : not saving factories that currently don't produce
                         if(my_fact_simul[target_id].se > 0)
                         {
                             // Trying to prevent losing the factory by sending there troops ASAP
@@ -245,6 +242,7 @@ int defend(int action_cnt)
                             op_fact_simul[target_id].fi = -my_fact_simul[target_id].fi;
                             op_fact_simul[target_id].se = my_fact_simul[target_id].se;
                             my_fact_simul[target_id].fi = 0;
+                            //fact_possession[target_id] = -1;
                         }
                     }
                 }
@@ -252,7 +250,11 @@ int defend(int action_cnt)
                 {
                     // ... attacks neutral factory
                     if(op_fact_simul[target_id].fi >= e.se.fi.se) op_fact_simul[target_id].fi -= e.se.fi.se;
-                    else op_fact_simul[target_id].fi = e.se.fi.se - op_fact_simul[target_id].fi;
+                    else
+                    {
+                        op_fact_simul[target_id].fi = e.se.fi.se - op_fact_simul[target_id].fi;
+                        //fact_possession[target_id] = -1;
+                    }
                 }
             }
         }
@@ -275,27 +277,20 @@ int attack(int action_cnt)
         moves_made[i] = 0;
     }
 
-    // Simulating all object currently in the air.
     for(int i=0; i<events.size(); i++)
     {
-        /*
-        *       NOTE: This is a simulation quite different from that in defend() and simul() as back then we care about 
-        *             order and time of events, as we want to detect all points in which number of cyborgs in each of our 
-        *             factories drops below 0. Here we just add up all the moves to see which opponents factory is the
-        *             most vunerable and where do we have spare cyborgs to attack it.
-        */
-
+        // Simulating all object currently in the air.
         e = events[i];
         target_id = e.se.se.se;
         if(e.se.fi.se == -1)
         {
-            // This event is a bomb sent by us
+            // Event is a bomb sent by us
             damage = max(10, op_fact_simul[target_id].fi/2);
             op_fact_simul[target_id].fi -= damage;
         }
         else
         {
-            // This event is a troop
+            // Event is a troop
             if(e.se.fi.fi == 1)
             {
                 // My troop
@@ -304,6 +299,7 @@ int attack(int action_cnt)
                 {
                     my_fact_simul[target_id].fi = -op_fact_simul[target_id].fi;
                     my_fact_simul[target_id].se = op_fact_simul[target_id].se;
+                    //fact_possession[target_id] = 1;
                 }
             }
             else
@@ -336,14 +332,12 @@ int attack(int action_cnt)
             for(int j=0; j<graph[i].size(); j++)
             {
                 p = graph[i][j];
-                if(p.se > 6) continue;      // HEURISTIC : Only attack factories close to you.
+                // HEURISTIC : Only attack factories close to you. Prioritize those that produce a lot.
+                if(p.se > 6) continue;
                 if(fact_possession[p.fi] != 1 && op_fact_simul[p.fi].fi <= my_fact[i].fi && op_fact_simul[p.fi].fi <= my_fact_simul[i].fi && op_fact_simul[p.fi].fi >= 0)
                 {
                     // HEURISTIC : Until you're rich, don't attack factories that don't provide production.
                     if(op_fact_simul[p.fi].se == 0 && my_fact_simul[i].fi < 20) continue;
-
-                    // HEURISTIC : Attack factories from those that produce the most. Second tiebreaker is the smallest 
-                    //             number of defending soldiers, third is the closest distance.
                     if(fact_possession[p.fi] == 0) attacks.pb(quad(par(1000 * (3 - op_fact_simul[p.fi].se) + op_fact_simul[p.fi].fi, p.se), par(i, p.fi)));
                     else if(op_fact_simul[p.fi].fi + (p.se + 1 - stopped[i]) * op_fact_simul[p.fi].se < my_fact[i].fi) attacks.pb(quad(par(1000 * (3 - op_fact_simul[p.fi].se) + op_fact_simul[p.fi].fi + (p.se + 1 - stopped[i]) * op_fact_simul[p.fi].se, p.se), par(i, p.fi)));
                 }
@@ -352,19 +346,18 @@ int attack(int action_cnt)
     }
 
     sort(attacks.begin(), attacks.end());
-
     for(int i=0; i<attacks.size(); i++)
     {
+        //if(actions == 10) break;
         q = attacks[i];
         if(my_fact_simul[q.se.fi].fi < 5) continue;
-        // HEURISTIC : Allow only 2 moves from each factory in each round. Prevents gsending out all of
-        //             the soldiers in case opponents does something funny to that factory in the next round.
         if(moves_made[q.se.fi] >= 2) continue;
         troops_sent = min(min(my_fact[q.se.fi].fi, my_fact_simul[q.se.fi].fi), (q.fi.fi % 1000) + 1);
         if(action_cnt + actions != 0) cout<<";";
         cout<<"MOVE "<<q.se.fi<<" "<<q.se.se<<" "<<troops_sent;
         actions++;
         my_fact[q.se.fi].fi -= troops_sent;
+        // Only restricted numer of moves from each factory in each round
         my_fact_simul[q.se.fi].fi -= troops_sent;
         moves_made[q.se.fi]++;
     }
@@ -388,8 +381,6 @@ int upgrade(int action_cnt)
             }
             else
             {
-                // HEURISTIC : If we have to few cyborgs to upgrade, maybe one of our neighbours 
-                //             has so many of them, that it can give us some.
                 for(int j=0; j<graph[i].size(); j++)
                 {
                     p = graph[i][j];
@@ -407,65 +398,6 @@ int upgrade(int action_cnt)
     return actions;
 }
 
-void first_round()
-{
-    int action_cnt;
-    quad q;
-    par p;
-    // HEURISTIC : If it's first round and you have no cyborg production, create some.
-    if(d_cyborg < 3)
-    {
-        for(int i=0; i<n; i++)
-        {
-            if(fact_possession[i] == 1 && my_fact[i].fi >= 10)
-            {
-                if(action_cnt != 0) cout<<";";
-                cout<<"INC "<<i;
-                action_cnt++;
-                my_fact[i].fi -= 10;
-            }
-        }
-    }
-
-    attacks.clear();
-
-    // HEURISTIC : In first round we don't sort factories to attack by their value, but
-    //             by distance to them, as we want to have some production quickly.
-    //             Therefore we attack those with production at least 1.
-
-    for(int i=0; i<n; i++)
-    {
-        if(fact_possession[i] == 1 && my_fact[i].fi > 0)
-        {
-            for(int j=0; j<graph[i].size(); j++)
-            {
-                p = graph[i][j];
-                if(fact_possession[p.fi] != 1 && op_fact[p.fi].fi < my_fact[i].fi && op_fact[p.fi].se > 0) attacks.pb(quad(par(p.se, op_fact[p.fi].fi), par(i, p.fi)));
-            }
-        }
-    }
-
-    sort(attacks.begin(), attacks.end());
-    int actions = 0, troops_sent;
-
-    for(int i=0; i<attacks.size(); i++)
-    {
-        if(actions == 2) break;
-        q = attacks[i];
-        if(my_fact[q.se.fi].fi <= q.fi.se) continue;
-        troops_sent = min(my_fact[q.se.fi].fi, q.fi.se + 1);
-        if(action_cnt != 0) cout<<";";
-        cout<<"MOVE "<<q.se.fi<<" "<<q.se.se<<" "<<troops_sent;
-        actions++;
-        action_cnt++;
-        my_fact[q.se.fi].fi -= troops_sent;
-    }
-    cout<<endl;
-
-
-    return;
-}
-
 int main()
 {
     int f1, f2, dist, entity_cnt, timer = 0;
@@ -475,7 +407,7 @@ int main()
     par p, p1, p2;
     quad q;
     event e;
-    int action_cnt, cost, target_id, sending_id, damage, time;
+    int action_cnt, cost, target_id, sending_id, damage, time, d_cyborg;
     cin>>n>>m;
     for(int i=1; i<=m; i++)
     {
@@ -499,8 +431,9 @@ int main()
         action_cnt = 0;
         d_cyborg = 0;
         events.clear();
+        events_now.clear();
 
-        cin>>entity_cnt; cin.ignore();      // The number of entities (factories, troops and bombs).
+        cin>>entity_cnt; cin.ignore(); // the number of entities (e.g. factories and troops)
         for(int i=0; i<entity_cnt; i++) 
         {
             cin>>id>>type>>arg_1>>arg_2>>arg_3>>arg_4>>arg_5; cin.ignore();
@@ -515,19 +448,20 @@ int main()
             }
             else if(type == "TROOP")
             {
-                events.pb(event(arg_5, quad(par(arg_1, arg_4), par(arg_2, arg_3))));
+                if(arg_5 >= 0) events.pb(event(arg_5, quad(par(arg_1, arg_4), par(arg_2, arg_3))));
             }
             else if(type == "BOMB")
             {
                 if(arg_1 == 1)
                 {
-                    events.pb(event(arg_4, quad(par(arg_1, -1), par(arg_2, arg_3))));
-                    bombed[arg_3] = 1;
+                    if(arg_4 >= 0)
+                    {
+                        events.pb(event(arg_4, quad(par(arg_1, -1), par(arg_2, arg_3))));
+                        bombed[arg_3] = 1;
+                    }
                 }
                 else
                 {
-                    // HEURISTIC : If opponent fired a new bomb, assume the target is our factory with the most cyborgs.
-                    //             Start its countdown to evacuation.
                     if(known_bomb_id.find(id) != known_bomb_id.end()) continue;
                     damage = -1;
                     target_id = -1;
@@ -548,20 +482,62 @@ int main()
         }
         sort(events.begin(), events.end());
 
-        // HEURISTIC : First round is special. We focus on rapid developement as oponent is far away.
+        // HEURISTIC : First round is special.
         if(timer == 1)
         {
-            first_round();
+            // HEURISTIC : If it's first round and you have no cyborg production, create some.
+            if(d_cyborg < 3)
+            {
+                for(int i=0; i<n; i++)
+                {
+                    if(fact_possession[i] == 1 && my_fact[i].fi >= 10)
+                    {
+                        if(action_cnt != 0) cout<<";";
+                        cout<<"INC "<<i;
+                        action_cnt++;
+                        my_fact[i].fi -= 10;
+                    }
+                }
+            }
+
+            attacks.clear();
+
+            for(int i=0; i<n; i++)
+            {
+                if(fact_possession[i] == 1 && my_fact[i].fi > 0)
+                {
+                    for(int j=0; j<graph[i].size(); j++)
+                    {
+                        p = graph[i][j];
+                        if(fact_possession[p.fi] != 1 && op_fact[p.fi].fi < my_fact[i].fi && op_fact[p.fi].se > 0) attacks.pb(quad(par(p.se, op_fact[p.fi].fi), par(i, p.fi)));
+                    }
+                }
+            }
+
+            sort(attacks.begin(), attacks.end());
+            int actions = 0, troops_sent;
+
+            for(int i=0; i<attacks.size(); i++)
+            {
+                if(actions == 2) break;
+                q = attacks[i];
+                if(my_fact[q.se.fi].fi <= q.fi.se) continue;
+                troops_sent = min(my_fact[q.se.fi].fi, q.fi.se + 1);
+                if(action_cnt != 0) cout<<";";
+                cout<<"MOVE "<<q.se.fi<<" "<<q.se.se<<" "<<troops_sent;
+                actions++;
+                action_cnt++;
+                my_fact[q.se.fi].fi -= troops_sent;
+            }
+            cout<<endl;
             continue;
         }
 
-        action_cnt += place_bombs(action_cnt, timer);
+        action_cnt += place_bombs(action_cnt,timer);
         action_cnt += defend(action_cnt);
         action_cnt += attack(action_cnt);
         action_cnt += upgrade(action_cnt);
 
-        // HEURISTIC : If an opponent's bomb will blow your factory in this turn, move all your cyborgs to another factory.
-        //             We move to our factory with highest level and least cyborgs. 
         for(int i=0; i<n; i++)
         {
             leave[i]--;
