@@ -1,5 +1,10 @@
 # How to run benchmarks
 
+0. Pull cg-brutaltester and referee repositories:
+```
+git submodule update --init
+```
+
 1. Build jar for the cg-brutaltestser and copy it to benchmarks' root:
 (Maven is required to be installed, probably can do away by using Docker)
 ```
