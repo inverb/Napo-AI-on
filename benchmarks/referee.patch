@@ -1,0 +1,40 @@
+diff --git a/src/main/java/Referee.java b/src/main/java/Referee.java
+index 23bdb4f..d779b20 100644
+--- a/src/main/java/Referee.java
++++ b/src/main/java/Referee.java
+@@ -853,13 +853,31 @@ class Referee {
+     }
+ 
+     public Referee(InputStream is, PrintStream out, PrintStream err) throws IOException {
+-	initReferee(2, new Properties());
+-
+ 	Scanner in = new Scanner(is);
+ 	
+ 	try {
+-	    // Read ###Start 2
+-	    in.nextLine();
++		Properties prop = new Properties();
++
++		{
++			String line = in.nextLine();
++
++			// Check if read ###Seed n
++			if (line.startsWith("###Seed ")) {
++				var seed = line.substring("###Seed ".length());
++				prop.setProperty("seed", seed);
++				line = in.nextLine();
++			}
++
++			// Ensure read ###Start 2
++			if (!line.equals("###Start 2")) {
++				out.println("###Error line wasn't a start command!");
++				err.println("Read line wasn't a start command!");
++				System.exit(1);
++				return;
++			}
++		}
++
++		initReferee(2, prop);
+ 	    
+ 	    out.println("###Input 0");
+ 	    for (String line : getInitInputForPlayer(0)) {

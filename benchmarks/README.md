@@ -14,10 +14,12 @@ cp target/cg-brutaltester-1.0.0-SNAPSHOT.jar ../cg-brutaltester.jar
 cd ..
 ```
 
-2. Build jar for the referee and copy it to benchmarks' root:
-(you _might_ have to Kotlin installed also... idk)
+2. Build jar for the referee and copy it to benchmarks' root.
+We also apply a patch that makes the referee work with brutaltester which outputs a "###Seed" line to referee, which the referee doesn't expect...
+(you _might_ nned to have Kotlin installed also... idk)
 ```
 cd cg-referee-ghost-in-the-cell
+git apply ../referee.patch
 ./gradlew jar
 cp build/libs/cg-referee-ghost-in-the-cell.jar ../referee.jar
 cd ..
